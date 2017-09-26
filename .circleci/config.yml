@@ -1,0 +1,88 @@
+defaults: &defaults
+  docker:
+    - image: letsdeal/primary:latest
+
+version: 2
+jobs:
+  build:
+    <<: *defaults
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build an image from a Dockerfile
+          command: |
+            docker build -t eu.gcr.io/letsdeal-bagheera/circleci:latest .
+
+  test:
+    <<: *defaults
+    steps:
+      - checkout
+      - run:
+          name: Examine a chart for possible issues
+          command: |
+            helm lint chart/*
+
+  deploy_qa:
+    <<: *defaults
+    steps:
+      - checkout
+      - run:
+          command: |
+            openssl aes-256-cbc -d -in client-secret.json.enc -out client-secret.json -k $KEY
+      - run:
+          name: Authorize access to Google Cloud Platform using a service account
+          command: |
+            gcloud auth activate-service-account --key-file client-secret.json
+      - run:
+          name: Fetch credentials for a running cluster
+          command: gcloud container clusters get-credentials qa
+      - run:
+          name: Install a chart archive
+          command: |
+            helm upgrade $CIRCLE_PROJECT_REPONAME chart/* -i --dry-run
+
+  deploy_stage:
+    <<: *defaults
+    steps:
+      - checkout
+      - run:
+          command: |
+            openssl aes-256-cbc -d -in client-secret.json.enc -out client-secret.json -k $KEY
+      - run:
+          name: Authorize access to Google Cloud Platform using a service account
+          command: |
+            gcloud auth activate-service-account --key-file client-secret.json
+      - run:
+          name: Fetch credentials for a running cluster
+          command: gcloud container clusters get-credentials stage
+      - run:
+          name: Install a chart archive
+          command: |
+            helm upgrade $CIRCLE_PROJECT_REPONAME chart/* -i --dry-run
+
+workflows:
+  version: 2
+
+  build_test_deploy:
+    jobs:
+      - build
+      - test
+      - deploy_qa:
+          filters:
+            branches:
+              only:
+                - develop
+                - master
+          requires:
+            - build
+            - test
+      - deploy_stage:
+          filters:
+            branches:
+              only:
+                - /release\/.*/
+                - /hotfix\/.*/
+          requires:
+            - build
+            - test

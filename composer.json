@@ -1,0 +1,12 @@
+{
+    "name": "mstrzele/circleci",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Maciej Strzelecki",
+            "email": "maciej.strzelecki@gmail.com"
+        }
+    ],
+    "require": {}
+}
