@@ -61,6 +61,14 @@ jobs:
           command: |
             helm upgrade $CIRCLE_PROJECT_REPONAME chart/* -i --dry-run
 
+  echo:
+    <<: *defaults
+    steps:
+      - checkout
+      - run:
+          command: |
+            echo "test"
+
 workflows:
   version: 2
 
@@ -77,6 +85,7 @@ workflows:
           requires:
             - build
             - test
+          context: org-global
       - deploy_stage:
           filters:
             branches:
@@ -86,3 +95,8 @@ workflows:
           requires:
             - build
             - test
+          context: org-global
+      - echo:
+          requires:
+            - deploy_qa
+            - deploy_stage
